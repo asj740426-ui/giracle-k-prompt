@@ -1,0 +1,7 @@
+{
+  "name": "Giracle-K Prompt ",
+  "description": "An advanced prompt engineering tool for AI image generation, translated from a legacy HTML/JS application into a modern React single-page application. It allows users to build complex, detailed prompts by selecting from a wide range of presets and customizing parameters for outfits, camera settings, environment, and subject details.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
