@@ -6,11 +6,12 @@ interface HeaderProps {
     legwearCount: number;
     shoeCount: number;
     onShowManual: () => void;
+    onShowApiKeyManager: () => void;
     language: Language;
     toggleLanguage: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ presetCount, legwearCount, shoeCount, onShowManual, language, toggleLanguage }) => {
+const Header: React.FC<HeaderProps> = ({ presetCount, legwearCount, shoeCount, onShowManual, onShowApiKeyManager, language, toggleLanguage }) => {
     const handleBookmark = () => {
         alert(t('header.bookmarkAlert', language));
     };
@@ -24,6 +25,13 @@ const Header: React.FC<HeaderProps> = ({ presetCount, legwearCount, shoeCount, o
                 <span className="px-3 py-1 rounded-full bg-fuchsia-950/30 border border-fuchsia-500/30 text-fuchsia-300 text-xs font-mono">
                     {t('header.info', language, presetCount, legwearCount, shoeCount)}
                 </span>
+                <button
+                    onClick={onShowApiKeyManager}
+                    className="text-xs bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:text-white rounded-full px-3 py-1 transition-all"
+                    title="Manage API Keys"
+                >
+                    API Keys
+                </button>
                 <button
                     onClick={onShowManual}
                     className="text-xs bg-transparent border border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20 hover:text-white rounded-full px-3 py-1 transition-all"

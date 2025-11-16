@@ -1,9 +1,8 @@
-import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { Modality, Type } from "@google/genai";
 import { PersonState, Preset, PromptState } from './types';
 import { COLORS_ARR, FINISHES_ARR, OPAQUE_DENIERS, PATTERNS_ARR, PRESETS_DATA, SHEER_DENIERS, SHOES, VIVID_COLORS_ARR, COLOR_NAME_TO_HEX_MAP, LETTERING_OPTIONS_ARR } from './constants';
 import { t, Language } from './localization/i18n';
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { getAiClient } from './services';
 
 // Generic utility to pick a random element from an array
 export const any = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -15,76 +14,28 @@ interface ImagePart {
     mimeType: string;
 }
 
-export const segmentObjectFromScribble = async (sourceImage: ImagePart, scribbleMask: ImagePart, lang: Language): Promise<ImagePart> => {
-    const prompt = t('geminiPrompts.segmentObject', lang);
-
-    const response = await ai.models.generateContent({
-      // Fix: Update model from deprecated 'gemini-1.5-pro-latest' to 'gemini-2.5-flash-image' for vision tasks
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { inlineData: { data: sourceImage.base64, mimeType: sourceImage.mimeType } },
-          { inlineData: { data: scribbleMask.base64, mimeType: scribbleMask.mimeType } },
-          { text: prompt }
-        ]
-      },
-      config: {
-          responseModalities: [Modality.IMAGE, Modality.TEXT],
-      },
-    });
+export const analyzeRealifiedImageForPrompt = async (base64: string, mimeType: string, lang: Language, verbosity: 'detailed' | 'concise'): Promise<string> => {
+    const promptKey = verbosity === 'detailed' 
+        ? 'geminiPrompts.analyzeRealifiedImage.detailed' 
+        : 'geminiPrompts.analyzeRealifiedImage.concise';
     
-    const content = response.candidates?.[0]?.content;
-    const imagePart = content?.parts?.find(p => p.inlineData);
-
-    if (imagePart?.inlineData) {
-        return {
-            base64: imagePart.inlineData.data,
-            mimeType: imagePart.inlineData.mimeType
-        };
-    } else {
-        const finishReason = response.candidates?.[0]?.finishReason;
-        const safetyRatings = response.candidates?.[0]?.safetyRatings;
-        if (finishReason === 'SAFETY') {
-            const categories = safetyRatings?.map(s => s.category).join(', ') || 'N/A';
-            throw new Error(`Segmentation failed due to safety settings. Blocked categories: ${categories}`);
+    const ai = getAiClient();    
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: {
+            parts: [
+                { text: t(promptKey, lang) },
+                { inlineData: { data: base64, mimeType: mimeType } }
+            ]
         }
-        throw new Error("AI did not return a valid mask image for segmentation.");
-    }
+    });
+    return response.text.trim();
 };
 
-export interface StyleSearchResult {
-    description: string;
-    sources: { uri: string; title: string; }[];
-}
-
-export const getStyleDescriptionFromSearch = async (styleName: string, lang: Language): Promise<StyleSearchResult> => {
-    const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash' to 'gemini-2.5-flash'
-        model: "gemini-2.5-flash",
-        contents: t('geminiPrompts.styleSearch', lang, styleName),
-        config: {
-            tools: [{googleSearch: {}}],
-        },
-    });
-
-    const description = response.text.trim();
-    
-    const sources: { uri: string; title: string; }[] = [];
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    if (groundingChunks && Array.isArray(groundingChunks)) {
-        for (const chunk of groundingChunks) {
-            if (chunk.web) {
-                sources.push({ uri: chunk.web.uri, title: chunk.web.title });
-            }
-        }
-    }
-    
-    return { description, sources };
-};
 
 export const performGeminiAnalysis = async (base64Data: string, mimeType: string, lang: Language): Promise<{ outfit: string }> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: {
             parts: [
@@ -107,20 +58,18 @@ export const performGeminiAnalysis = async (base64Data: string, mimeType: string
     });
     const jsonStr = response.text.trim();
     try {
-        // A simple check to see if it's a JSON string.
         if (jsonStr.startsWith('{') && jsonStr.endsWith('}')) {
             return JSON.parse(jsonStr);
         }
     } catch (e) {
         console.error("Failed to parse Gemini JSON response", e);
     }
-    // Fallback if the model doesn't return perfect JSON
     return { outfit: jsonStr };
 };
 
 export const analyzeBackgroundImage = async (base64: string, mimeType: string, lang: Language): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: {
             parts: [
@@ -133,8 +82,8 @@ export const analyzeBackgroundImage = async (base64: string, mimeType: string, l
 };
 
 export const analyzePoseAndAction = async (base64: string, mimeType: string, lang: Language): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: {
             parts: [
@@ -147,8 +96,8 @@ export const analyzePoseAndAction = async (base64: string, mimeType: string, lan
 };
 
 export const generateBackgroundFromAtmosphere = async (atmosphere: string, lang: Language): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: t('geminiPrompts.backgroundFromAtmosphere', lang, atmosphere),
     });
@@ -156,8 +105,8 @@ export const generateBackgroundFromAtmosphere = async (atmosphere: string, lang:
 };
 
 export const analyzeSceneFromTitle = async (title: string, lang: Language): Promise<Partial<PromptState>> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: t('geminiPrompts.sceneFromTitle', lang, title),
         config: {
@@ -178,8 +127,8 @@ export const analyzeSceneFromTitle = async (title: string, lang: Language): Prom
 }
 
 export const analyzeOutfitFromCharacter = async (title: string, character: string, lang: Language): Promise<{ outfit: string }> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: t('geminiPrompts.outfitFromCharacter', lang, character, title),
     });
@@ -187,41 +136,57 @@ export const analyzeOutfitFromCharacter = async (title: string, character: strin
 }
 
 export const createVideoPromptFromIdea = async (idea: string, lang: Language): Promise<string> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
         model: 'gemini-2.5-flash',
         contents: t('geminiPrompts.videoPromptFromIdea', lang, idea),
     });
     return response.text.trim();
 };
 
-export const translateToEnglish = async (text: string, lang: Language): Promise<string> => {
+// FIX: Add missing segmentObjectFromScribble function for the inline image editor.
+export const segmentObjectFromScribble = async (sourceImage: ImagePart, scribbleMask: ImagePart, lang: Language): Promise<ImagePart> => {
+    const ai = getAiClient();
     const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
+        model: 'gemini-2.5-flash-image',
+        contents: {
+            parts: [
+                { inlineData: { data: sourceImage.base64, mimeType: sourceImage.mimeType } },
+                { inlineData: { data: scribbleMask.base64, mimeType: scribbleMask.mimeType } },
+                { text: t('geminiPrompts.segmentObject', lang) }
+            ]
+        },
+        config: {
+            responseModalities: [Modality.IMAGE],
+        },
+    });
+
+    const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+    if (!imagePart?.inlineData) {
+        const finishReason = response.candidates?.[0]?.finishReason;
+        const safetyRatings = response.candidates?.[0]?.safetyRatings;
+        if (finishReason === 'SAFETY') {
+            const categories = safetyRatings?.map(s => s.category).join(', ') || 'N/A';
+            throw new Error(`Request was blocked due to safety settings. Blocked categories: ${categories}`);
+        }
+        throw new Error("Failed to generate segmentation mask. No image was returned from the API.");
+    }
+    
+    return {
+        base64: imagePart.inlineData.data,
+        mimeType: imagePart.inlineData.mimeType,
+    };
+};
+
+export const translateToEnglish = async (text: string, lang: Language): Promise<string> => {
+    const ai = getAiClient();
+    const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: t('geminiPrompts.translationPrompt', lang, text),
     });
     return response.text.trim();
 };
-
-export const analyzeRealifiedImageForPrompt = async (base64: string, mimeType: string, lang: Language, verbosity: 'detailed' | 'concise'): Promise<string> => {
-    const promptKey = verbosity === 'detailed' 
-        ? 'geminiPrompts.analyzeRealifiedImage.detailed' 
-        : 'geminiPrompts.analyzeRealifiedImage.concise';
-        
-    const response = await ai.models.generateContent({
-        // Fix: Update model from deprecated 'gemini-1.5-flash-latest' to 'gemini-2.5-flash'
-        model: 'gemini-2.5-flash',
-        contents: {
-            parts: [
-                { text: t(promptKey, lang) },
-                { inlineData: { data: base64, mimeType: mimeType } }
-            ]
-        }
-    });
-    return response.text.trim();
-};
-
 
 // --- File and Audio Utilities ---
 

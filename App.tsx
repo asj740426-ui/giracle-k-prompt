@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-// Fix: Import `Type` for response schema
-import { GoogleGenAI, Modality, Type } from '@google/genai';
+import { Modality, Type } from '@google/genai';
 import { t, Language } from './localization/i18n';
 import type { Preset, PromptState, AnalyzedData, PersonState, VisionFeature, UploadedImageState, ImagePart } from './types';
 import { PRESETS_DATA, LEGWEAR_OPTIONS, SHOES, FIXED_PROMPTS, STYLE_PROMPT_MAP, CHARACTER_OPTIONS, HAIR_STYLE_OPTIONS, HAIR_COLOR_OPTIONS, BACKGROUND_OPTIONS, TIME_OF_DAY_OPTIONS, WEATHER_OPTIONS, RANDOM_POSES, AGE_OPTIONS, WEAPON_OPTIONS, ASSAULT_RIFLE_MODELS, REVOLVER_MODELS, PISTOL_MODELS, SNIPER_RIFLE_MODELS, VEHICLE_OPTIONS, PET_OPTIONS, PLURAL_WEAPONS, ASPECT_RATIOS, CAMERA_BODIES, LENSES, CAMERA_COMPOSITION_OPTIONS, ERA_OPTIONS } from './constants';
-import { any, suggestShoes, createDefaultPerson, analyzeSceneFromTitle, analyzeOutfitFromCharacter, getStyleDescriptionFromSearch, segmentObjectFromScribble, analyzeRealifiedImageForPrompt } from './utils';
+import { any, suggestShoes, createDefaultPerson, analyzeSceneFromTitle, analyzeOutfitFromCharacter, analyzeRealifiedImageForPrompt } from './utils';
+import { getAiClient, hasApiKeysInStorage } from './services';
 
 import Header from './components/Header';
 import ControlPanel from './components/ControlPanel';
@@ -14,8 +14,7 @@ import Manual from './components/Manual';
 import StyleTransferPreview from './components/StyleTransferPreview';
 import ImageModal from './components/ImageModal';
 import ImageEditModal from './components/ImageEditModal';
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import ApiKeyManagerModal from './components/ApiKeyManagerModal';
 
 const PHOTO_STYLES = new Set([
   'figure',
@@ -99,6 +98,10 @@ const App: React.FC = () => {
     const [activeVisionFeature, setActiveVisionFeature] = useState<VisionFeature>('analyze');
     const [uploadedImageData1, setUploadedImageData1] = useState<UploadedImageState | null>(null);
     const [uploadedImageDataRealify, setUploadedImageDataRealify] = useState<UploadedImageState | null>(null);
+    
+    const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+    const [apiKeyModalMode, setApiKeyModalMode] = useState<'setup' | 'unlock'>('setup');
+    const [isApiReady, setIsApiReady] = useState(false);
 
     
     // This effect synchronizes the `people` array with the `numberOfPeople` setting.
@@ -143,6 +146,23 @@ const App: React.FC = () => {
         setLogs(prevLogs => [`[${new Date().toLocaleTimeString()}] ${message}`, ...prevLogs].slice(0, 100));
     }, []);
     
+    useEffect(() => {
+        if (hasApiKeysInStorage()) {
+            setApiKeyModalMode('unlock');
+            setIsApiKeyModalOpen(true);
+        } else {
+            addLog("API Keys not found. Please set them via the 'API Keys' button in the header.");
+            setIsApiKeyModalOpen(true);
+            setApiKeyModalMode('setup');
+        }
+    }, [addLog]);
+
+    const handleKeysReady = () => {
+        setIsApiReady(true);
+        setIsApiKeyModalOpen(false);
+        addLog("API Keys are ready to use.");
+    };
+
     const getActiveImageForStyling = useCallback((): ImagePart | null => {
         // Priority:
         // 1. Result of a previous style transfer, if available.
@@ -416,6 +436,11 @@ const App: React.FC = () => {
     }, [promptParts]);
 
     const onGenerateImage = useCallback(async () => {
+        if (!isApiReady) {
+            addLog("API Keys are not ready. Please set them up first.");
+            setIsApiKeyModalOpen(true);
+            return;
+        }
         setIsGenerating(true);
         addLog(t('app.logs.generating', language));
         setGeneratedImages([]);
@@ -436,6 +461,7 @@ const App: React.FC = () => {
                 });
             }
             
+            const ai = getAiClient();
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts },
@@ -471,13 +497,14 @@ const App: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [addLog, language, promptParts, directBackgroundImage]);
+    }, [addLog, language, promptParts, directBackgroundImage, isApiReady]);
 
     const onAnalyzeImage = useCallback(async (base64Data: string, mimeType: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsGenerating(true);
         addLog('Analyzing image with Gemini...');
         try {
-            // Fix: Update model from deprecated 'gemini-1.5-flash' to 'gemini-2.5-flash'
+            const ai = getAiClient();
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: {
@@ -488,7 +515,6 @@ const App: React.FC = () => {
                 },
                 config: {
                     responseMimeType: 'application/json',
-                    // Fix: Update responseSchema to use Type enum
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -519,13 +545,14 @@ const App: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [addLog, language, activePersonIndex, promptState.people]);
+    }, [addLog, language, activePersonIndex, promptState.people, isApiReady]);
 
     const executeImageEdit = useCallback(async (images: ImagePart[], editPrompt: string): Promise<ImagePart> => {
         addLog(`Editing image with prompt: ${editPrompt}`);
         const parts: ({ inlineData: { data: string; mimeType: string; } } | { text: string; })[] = images.map(img => ({ inlineData: { data: img.base64, mimeType: img.mimeType } }));
         parts.push({ text: editPrompt });
 
+        const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: { parts },
@@ -557,6 +584,7 @@ const App: React.FC = () => {
     }, [addLog, language]);
 
     const onEditImage = useCallback(async (images: ImagePart[], editPrompt: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsGenerating(true);
         try {
             const newImage = await executeImageEdit(images, editPrompt);
@@ -568,9 +596,10 @@ const App: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [executeImageEdit, addLog, language]);
+    }, [executeImageEdit, addLog, language, isApiReady]);
 
     const onProofShot = useCallback(async (image: ImagePart, texts: { overlayText: string, paperText: string }) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         let proofPromptParts: string[] = [];
         if (texts.overlayText) {
             proofPromptParts.push(`Add a subtle, semi-transparent EXIF data overlay in a corner of the image, similar to a digital camera date stamp. The overlay should contain the text: "${texts.overlayText}". The text should be in a simple, pixelated font.`);
@@ -597,9 +626,10 @@ const App: React.FC = () => {
         } finally {
             setIsGenerating(false);
         }
-    }, [executeImageEdit, addLog, language]);
+    }, [executeImageEdit, addLog, language, isApiReady]);
     
     const onProofShotForStyledImage = useCallback(async (image: ImagePart, texts: { overlayText: string, paperText: string }) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         let proofPromptParts: string[] = [];
         if (texts.overlayText) {
             proofPromptParts.push(`Add a subtle, semi-transparent EXIF data overlay in a corner of the image, similar to a digital camera date stamp. The overlay should contain the text: "${texts.overlayText}". The text should be in a simple, pixelated font.`);
@@ -632,10 +662,11 @@ const App: React.FC = () => {
         } finally {
             setIsStyling(false);
         }
-    }, [executeImageEdit, addLog, language]);
+    }, [executeImageEdit, addLog, language, isApiReady]);
 
 
     const onAnalyzeScene = useCallback(async (title: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsAnalyzingScene(true);
         addLog(`Analyzing scene from title: ${title}`);
         try {
@@ -648,9 +679,10 @@ const App: React.FC = () => {
         } finally {
             setIsAnalyzingScene(false);
         }
-    }, [addLog, language]);
+    }, [addLog, language, isApiReady]);
 
     const onAnalyzeCharacterOutfit = useCallback(async (title: string, character: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsAnalyzingOutfit(true);
         addLog(`Analyzing outfit for ${character} from ${title}...`);
         try {
@@ -669,12 +701,14 @@ const App: React.FC = () => {
         } finally {
             setIsAnalyzingOutfit(false);
         }
-    }, [addLog, language, activePersonIndex]);
+    }, [addLog, language, activePersonIndex, isApiReady]);
 
     const onGenerateVideoFromPrompt = useCallback(async (prompt: string, image?: ImagePart) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsGeneratingVideo(true);
         addLog(`Generating video with prompt: ${prompt}`);
         try {
+            const ai = getAiClient();
             let operation = await ai.models.generateVideos({
               model: 'veo-3.1-fast-generate-preview',
               prompt: prompt,
@@ -693,7 +727,7 @@ const App: React.FC = () => {
             
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
             if (downloadLink) {
-                const fullLink = `${downloadLink}&key=${process.env.API_KEY}`;
+                const fullLink = `${downloadLink}&key=${(ai as any).apiKey}`;
                 addLog(`Video generated. Download link (valid for a short time): ${fullLink}`);
                 window.open(fullLink, '_blank');
             } else {
@@ -706,13 +740,14 @@ const App: React.FC = () => {
         } finally {
             setIsGeneratingVideo(false);
         }
-    }, [addLog, promptState.aspect]);
+    }, [addLog, promptState.aspect, isApiReady]);
     
     const applyStyleTransfer = async (originalImage: ImagePart, stylePrompt: string, styleKey: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsStyling(true);
         addLog(`Applying style: ${styleKey}`);
         try {
-            // Fix: Update model from deprecated 'gemini-1.5-pro-latest' to 'gemini-2.5-flash-image'
+            const ai = getAiClient();
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: [{ inlineData: { data: originalImage.base64, mimeType: originalImage.mimeType } }, { text: stylePrompt }] },
@@ -747,6 +782,7 @@ const App: React.FC = () => {
     };
     
     const handleStyleButtonClick = (styleKey: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         const imageToStyle = getActiveImageForStyling();
         if (!imageToStyle) {
             addLog('Please generate or upload an image first before applying a style.');
@@ -757,6 +793,7 @@ const App: React.FC = () => {
     };
 
     const onSora2StyleTransfer = () => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         const imageToStyle = getActiveImageForStyling();
         if (!imageToStyle) {
             addLog('Please generate or upload an image first before applying a style.');
@@ -767,6 +804,7 @@ const App: React.FC = () => {
     };
 
     const onCustomStyleTransfer = (stylePrompt: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         if (!stylePrompt.trim()) return;
         const imageToStyle = getActiveImageForStyling();
         if (!imageToStyle) {
@@ -778,6 +816,7 @@ const App: React.FC = () => {
     };
 
     const onColorizeImage = (color: string) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         const imageToStyle = getActiveImageForStyling();
         if (!imageToStyle) {
             addLog('Please generate or upload an image first before applying a color change.');
@@ -788,12 +827,12 @@ const App: React.FC = () => {
     };
     
     const onRealifyImage = async (sourceImage: ImagePart) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsStyling(true);
         addLog(t('app.logs.realifying', language));
         try {
             const prompt = t('geminiPrompts.realifyImage', language);
-            
-            // Fix: Update model from deprecated 'gemini-1.5-pro-latest' to 'gemini-2.5-flash-image'
+            const ai = getAiClient();
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
                 contents: { parts: [{ inlineData: { data: sourceImage.base64, mimeType: sourceImage.mimeType } }, { text: prompt }] },
@@ -839,6 +878,7 @@ const App: React.FC = () => {
     };
     
     const handleAnalyzeRealifiedImage = async (image: ImagePart) => {
+        if (!isApiReady) { addLog("API Keys not configured."); return; }
         setIsAnalyzingRealifiedPrompt(true);
         setRealifiedPrompt(null);
         addLog(t('app.logs.analyzingRealifiedPrompt', language));
@@ -918,11 +958,22 @@ const App: React.FC = () => {
     
     return (
         <div className="bg-[#11101d] min-h-screen text-slate-200 font-sans">
+            <ApiKeyManagerModal
+                isOpen={isApiKeyModalOpen}
+                onClose={() => setIsApiKeyModalOpen(false)}
+                onKeysReady={handleKeysReady}
+                initialMode={apiKeyModalMode}
+                language={language}
+            />
             <Header 
                 presetCount={presets.length}
                 legwearCount={LEGWEAR_OPTIONS.length}
                 shoeCount={SHOES.length}
                 onShowManual={() => setShowManual(true)}
+                onShowApiKeyManager={() => {
+                    setApiKeyModalMode('setup');
+                    setIsApiKeyModalOpen(true);
+                }}
                 language={language}
                 toggleLanguage={toggleLanguage}
             />
@@ -933,7 +984,7 @@ const App: React.FC = () => {
                     promptState={promptState}
                     setPromptState={setPromptState}
                     addLog={addLog}
-                    isGenerating={isGenerating}
+                    isGenerating={isGenerating || !isApiReady}
                     analyzedData={analyzedData}
                     setAnalyzedData={setAnalyzedData}
                     onAnalyzeImage={onAnalyzeImage}
@@ -1021,7 +1072,7 @@ const App: React.FC = () => {
             <div className="fixed top-1/2 right-6 -translate-y-1/2 z-30 flex flex-col items-center gap-4">
                 <button
                     onClick={onGenerateImage}
-                    disabled={isGenerating}
+                    disabled={isGenerating || !isApiReady}
                     className="w-24 h-24 rounded-full bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold flex items-center justify-center text-center text-sm p-2 transition-all shadow-[0_0_15px_rgba(240,47,194,0.4)] hover:shadow-[0_0_25px_rgba(147,51,234,0.8)] active:opacity-80 disabled:from-slate-600 disabled:to-slate-700 disabled:shadow-none disabled:cursor-not-allowed transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#11101d] focus:ring-fuchsia-500"
                     title={t('imagePreview.generateButton', language)}
                 >
