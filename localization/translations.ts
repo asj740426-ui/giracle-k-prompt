@@ -31,6 +31,9 @@ export const translations = {
         editFailedSafety: (categories: string) => `Image edit failed due to safety settings. Blocked categories: ${categories}`,
         editNoImage: "Image edit did not return an image.",
         editError: (error: string) => `Image edit failed: ${error}`,
+      },
+      errors: {
+        quotaExceeded: "API Quota Exceeded (Error 429). Please check your plan and billing details. The free tier may have limitations. For more information, visit the Google AI Studio billing page.",
       }
     },
     header: {
@@ -379,7 +382,7 @@ export const translations = {
       colorizeImage: (color: string) => `Recolor the main subject's outfit in the image to be primarily ${color}. Maintain the original style, lighting, and background.`,
       realifyImage: `Analyze the provided image (which may be a drawing or anime screenshot) and redraw it as a hyperrealistic, photorealistic photograph. Preserve the subject's identity, pose, and the overall composition, but render everything with realistic textures, lighting, and details as if it were a real-life photo taken with a DSLR camera.`,
       maskedEditPrompt: (color: string) => `The second image is a mask. Recolor the masked area of the first image to be ${color}.`,
-      liveSystemInstruction: `You are a friendly and helpful AI assistant.`,
+      liveSystemInstruction: `당신은 친절하고 도움이 되는 AI 어시스턴트입니다.`,
     },
     options: {
       presets: {
@@ -783,6 +786,9 @@ export const translations = {
         editFailedSafety: (categories: string) => `안전 설정으로 인해 이미지 편집에 실패했습니다. 차단된 카테고리: ${categories}`,
         editNoImage: "이미지 편집이 이미지를 반환하지 않았습니다.",
         editError: (error: string) => `이미지 편집 실패: ${error}`,
+      },
+      errors: {
+        quotaExceeded: "API 할당량이 초과되었습니다 (오류 429). 플랜 및 결제 세부 정보를 확인해주세요. 무료 등급에는 제한이 있을 수 있습니다. 자세한 내용은 Google AI Studio 결제 페이지를 참조하세요.",
       }
     },
     header: {

@@ -852,9 +852,14 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 const backgroundDescription = await analyzeBackgroundImage(pendingBgImage.base64, pendingBgImage.mimeType, language);
                 setPromptState(p => ({ ...p, background: backgroundDescription }));
                 addLog(t('controlPanel.logs.bgImageSet', language, backgroundDescription));
-            } catch (error) {
-                 const errorMessage = error instanceof Error ? error.message : String(error);
-                addLog(t('controlPanel.logs.bgAnalysisError', language, errorMessage));
+            } catch (e) {
+                const error = e as Error;
+                if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                    addLog(t('app.errors.quotaExceeded', language));
+                } else {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    addLog(t('controlPanel.logs.bgAnalysisError', language, errorMessage));
+                }
             } finally {
                 setPendingBgImage(null);
                 setDirectBackgroundImage(null);
@@ -908,10 +913,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             const poseDescription = await analyzePoseAndAction(base64, mimeType, language);
             setPromptState(p => ({...p, pose: poseDescription}));
             addLog(t('controlPanel.logs.poseSet', language, poseDescription));
-        } catch(error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            addLog(t('controlPanel.logs.poseAnalysisError', language, errorMessage));
-            setAnalysisError(errorMessage);
+        } catch(e) {
+            const error = e as Error;
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+                setAnalysisError(t('app.errors.quotaExceeded', language));
+            } else {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                addLog(t('controlPanel.logs.poseAnalysisError', language, errorMessage));
+                setAnalysisError(errorMessage);
+            }
         } finally {
             setIsAnalyzingPose(false);
         }
@@ -952,9 +963,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 onEditImage([uploadedImageData1], finalPrompt);
     
             } catch (e) {
-                const errorMessage = e instanceof Error ? e.message : String(e);
-                addLog(t('controlPanel.logs.sourceAnalysisFailed', language, errorMessage));
-                setAnalysisError(errorMessage);
+                const error = e as Error;
+                if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                    const quotaErrorMsg = t('app.errors.quotaExceeded', language);
+                    addLog(quotaErrorMsg);
+                    setAnalysisError(quotaErrorMsg);
+                } else {
+                    const errorMessage = e instanceof Error ? e.message : String(e);
+                    addLog(t('controlPanel.logs.sourceAnalysisFailed', language, errorMessage));
+                    setAnalysisError(errorMessage);
+                }
             } finally {
                 setIsAnalyzingSourceOutfit(false);
             }
@@ -1119,8 +1137,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             setActiveVisionFeature('video');
             addLog(t('controlPanel.logs.videoPromptCreated', language));
         } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : String(e);
-            addLog(t('controlPanel.logs.videoPromptCreateError', language, errorMessage));
+            const error = e as Error;
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                const errorMessage = e instanceof Error ? e.message : String(e);
+                addLog(t('controlPanel.logs.videoPromptCreateError', language, errorMessage));
+            }
         } finally {
             setIsCreatingVideoPrompt(false);
         }
@@ -1140,9 +1163,14 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 const backgroundDescription = await generateBackgroundFromAtmosphere(newAtmosphere, language);
                 handleStateChange('background', backgroundDescription);
                 addLog(t('controlPanel.logs.atmosphereSet', language, backgroundDescription));
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                addLog(t('controlPanel.logs.atmosphereError', language, message));
+            } catch (e) {
+                const error = e as Error;
+                if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                    addLog(t('app.errors.quotaExceeded', language));
+                } else {
+                    const message = error instanceof Error ? error.message : String(error);
+                    addLog(t('controlPanel.logs.atmosphereError', language, message));
+                }
             } finally {
                 setIsGeneratingAtmosphere(false);
             }
@@ -1322,500 +1350,30 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                                 type="checkbox" 
                                 id={`metallicOutfit-${activePerson.id}`} 
                                 checked={activePerson.metallicOutfit} 
-                                onChange={(e) => handlePersonStateChange(activePersonIndex, 'metallicOutfit', e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" 
-                            />
-                            <label htmlFor={`metallicOutfit-${activePerson.id}`} className="text-sm text-slate-300 whitespace-nowrap">{t('controlPanel.labels.metallic', language)}</label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input 
-                                type="checkbox" 
-                                id={`noOutfit-${activePerson.id}`} 
-                                checked={!activePerson.customOutfit} 
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        handlePersonStateChange(activePersonIndex, 'customOutfit', '');
-                                    }
-                                }}
-                                className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" 
-                            />
-                            <label htmlFor={`noOutfit-${activePerson.id}`} className="text-sm text-slate-300 whitespace-nowrap">{t('controlPanel.labels.noOutfit', language)}</label>
+                                onChange={(e) => handlePersonStateChange(activePersonIndex, 'metallicOutfit', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" />
+                            <label htmlFor={`metallicOutfit-${activePerson.id}`} className="text-sm text-slate-300">{t('controlPanel.labels.metallic', language)}</label>
                         </div>
                     </div>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                     {Object.entries(groupedAndFilteredPresets).map(([category, presetsInCategory]) => (
                         <div key={category}>
-                             <h4 onClick={() => toggleCategory(category)} className="text-xs font-bold text-fuchsia-400 uppercase mb-1 cursor-pointer select-none">{t(category, language)} {collapsedCategories[category] ? '▼' : '▲'}</h4>
-                             {!collapsedCategories[category] && (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
-                                    {(presetsInCategory as Preset[]).map(p => (
-                                        <button key={p.label} onClick={() => handlePresetSelect(activePersonIndex, p)} className="text-xs text-left p-2 bg-slate-800/50 hover:bg-fuchsia-500/20 rounded-md transition-colors truncate" title={t(p.label, language)}>{t(p.label, language)}</button>
-                                    ))}
-                                </div>
-                            )}
+                        <button onClick={() => toggleCategory(category)} className="w-full text-left text-sm font-semibold text-fuchsia-300 mb-1 flex justify-between items-center">
+                            <span>{t(category, language)}</span>
+                            <span>{collapsedCategories[category] ? '＋' : '－'}</span>
+                        </button>
+                        {!collapsedCategories[category] && (
+                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-2">
+                            {presetsInCategory.map(preset => (
+                                <button key={preset.label} onClick={() => handlePresetSelect(activePersonIndex, preset)} className="text-xs text-left bg-fuchsia-950/30 border border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20 hover:text-white rounded-md p-2 transition-colors">
+                                {t(preset.label, language)}
+                                </button>
+                            ))}
+                            </div>
+                        )}
                         </div>
                     ))}
                 </div>
-            </Section>
-
-            <Section title={t('controlPanel.sections.accessories', language)}>
-                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {renderSelect(t('controlPanel.labels.hat', language), activePerson.hat, e => handlePersonStateChange(activePersonIndex, 'hat', e.target.value), HAT_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.glasses', language), activePerson.glasses, e => handlePersonStateChange(activePersonIndex, 'glasses', e.target.value), GLASSES_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.earrings', language), activePerson.earrings, e => handlePersonStateChange(activePersonIndex, 'earrings', e.target.value), EARRING_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.necklace', language), activePerson.necklace, e => handlePersonStateChange(activePersonIndex, 'necklace', e.target.value), NECKLACE_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.bag', language), activePerson.bag, e => handlePersonStateChange(activePersonIndex, 'bag', e.target.value), BAG_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.weapon', language), activePerson.weapon, e => handlePersonStateChange(activePersonIndex, 'weapon', e.target.value), WEAPON_OPTIONS)}
-                    {renderSelect(
-                        t('controlPanel.labels.weaponQuantity', language),
-                        activePerson.weaponQuantity,
-                        e => handlePersonStateChange(activePersonIndex, 'weaponQuantity', e.target.value),
-                        WEAPON_QUANTITY_OPTIONS,
-                        !activePerson.weapon || PLURAL_WEAPONS.has(activePerson.weapon)
-                    )}
-                 </div>
-            </Section>
-
-             <Section title={t('controlPanel.sections.legwear', language)}>
-                <div className="space-y-3">
-                    <div className="p-2 border border-slate-700/50 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
-                           <label className="text-sm font-medium text-slate-300">{t('controlPanel.labels.pantyhose', language)}</label>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id={`pantyhoseMetallic-${activePerson.id}`} checked={activePerson.pantyhoseMetallic} onChange={e => handleMetallicToggle('pantyhose', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" />
-                                <label htmlFor={`pantyhoseMetallic-${activePerson.id}`} className="text-sm text-slate-300">{t('controlPanel.labels.metallic', language)}</label>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                            <select value={pantyhoseModesRef.current[activePerson.id] || ''} onChange={e => {
-                                const newMode = e.target.value;
-                                pantyhoseModesRef.current[activePerson.id] = newMode;
-                                const newValue = getLegwearValue(newMode, pantyhoseColorsRef.current[activePerson.id], undefined, activePerson.pantyhoseMetallic);
-                                handlePersonStateChange(activePersonIndex, 'pantyhose', newValue);
-                            }} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500">
-                                {LEGWEAR_OPTIONS.map(opt => <option key={opt.v} value={opt.v}>{t(opt.t, language)}</option>)}
-                            </select>
-                           <div className="flex gap-2">
-                               <div className="relative flex-1" ref={colorPickerRef}>
-                                   <button onClick={() => setShowPantyhoseColorPicker(p => !p)} className="w-full text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.selectColor', language)}</button>
-                                   {showPantyhoseColorPicker && <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-slate-900 p-2 rounded-md shadow-lg border border-fuchsia-500/20 grid grid-cols-8 gap-2 w-max">{LEGWEAR_PICKER_COLORS.map(c => <div key={c} onClick={() => handleSelectColorPantyhose(COLOR_NAME_TO_HEX_MAP[c])} style={{backgroundColor: COLOR_NAME_TO_HEX_MAP[c]}} className="w-6 h-6 rounded-full cursor-pointer border border-white/20"></div>)}</div>}
-                               </div>
-                               <button onClick={handleRandomColorPantyhose} className="flex-1 text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.randomColorPantyhose', language)}</button>
-                           </div>
-                        </div>
-                    </div>
-                     <div className="p-2 border border-slate-700/50 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
-                           <label className="text-sm font-medium text-slate-300">{t('controlPanel.labels.stockings', language)}</label>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id={`stockingsMetallic-${activePerson.id}`} checked={activePerson.stockingsMetallic} onChange={e => handleMetallicToggle('stockings', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" />
-                                <label htmlFor={`stockingsMetallic-${activePerson.id}`} className="text-sm text-slate-300">{t('controlPanel.labels.metallic', language)}</label>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                            <select value={stockingsModesRef.current[activePerson.id] || ''} onChange={e => {
-                                const newMode = e.target.value;
-                                stockingsModesRef.current[activePerson.id] = newMode;
-                                const newValue = getLegwearValue(newMode, stockingsColorsRef.current[activePerson.id], activePerson.stockingLength, activePerson.stockingsMetallic);
-                                handlePersonStateChange(activePersonIndex, 'stockings', newValue);
-                            }} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500">
-                                {STOCKINGS_OPTIONS.map(opt => <option key={opt.v} value={opt.v}>{t(opt.t, language)}</option>)}
-                            </select>
-                            <div className="flex gap-2">
-                                 <div className="relative flex-1" ref={stockingsColorPickerRef}>
-                                     <button onClick={() => setShowStockingsColorPicker(p => !p)} className="w-full text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.selectColor', language)}</button>
-                                     {showStockingsColorPicker && <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-slate-900 p-2 rounded-md shadow-lg border border-fuchsia-500/20 grid grid-cols-8 gap-2 w-max">{LEGWEAR_PICKER_COLORS.map(c => <div key={c} onClick={() => handleSelectColorStockings(COLOR_NAME_TO_HEX_MAP[c])} style={{backgroundColor: COLOR_NAME_TO_HEX_MAP[c]}} className="w-6 h-6 rounded-full cursor-pointer border border-white/20"></div>)}</div>}
-                                 </div>
-                                 <button onClick={handleRandomColorStockings} className="flex-1 text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.randomColorStockings', language)}</button>
-                            </div>
-                        </div>
-                        {renderSelect("", activePerson.stockingLength, e => handleStockingLengthChange(e.target.value), STOCKING_LENGTH_OPTIONS)}
-                     </div>
-                     <div className="p-2 border border-slate-700/50 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
-                           <label className="text-sm font-medium text-slate-300">{t('controlPanel.labels.leggings', language)}</label>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id={`leggingsMetallic-${activePerson.id}`} checked={activePerson.leggingsMetallic} onChange={e => handleMetallicToggle('leggings', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" />
-                                <label htmlFor={`leggingsMetallic-${activePerson.id}`} className="text-sm text-slate-300">{t('controlPanel.labels.metallic', language)}</label>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                            <select value={leggingsModesRef.current[activePerson.id] || ''} onChange={e => {
-                                const newMode = e.target.value;
-                                leggingsModesRef.current[activePerson.id] = newMode;
-                                const newValue = getLegwearValue(newMode, leggingsColorsRef.current[activePerson.id], undefined, activePerson.leggingsMetallic);
-                                handlePersonStateChange(activePersonIndex, 'leggings', newValue);
-                                }} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500">
-                                {LEGGINGS_OPTIONS.map(opt => <option key={opt.v} value={opt.v}>{t(opt.t, language)}</option>)}
-                            </select>
-                             <div className="flex gap-2">
-                                 <div className="relative flex-1" ref={leggingsColorPickerRef}>
-                                     <button onClick={() => setShowLeggingsColorPicker(p => !p)} className="w-full text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.selectColor', language)}</button>
-                                     {showLeggingsColorPicker && <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-slate-900 p-2 rounded-md shadow-lg border border-fuchsia-500/20 grid grid-cols-8 gap-2 w-max">{LEGWEAR_PICKER_COLORS.map(c => <div key={c} onClick={() => handleSelectColorLeggings(COLOR_NAME_TO_HEX_MAP[c])} style={{backgroundColor: COLOR_NAME_TO_HEX_MAP[c]}} className="w-6 h-6 rounded-full cursor-pointer border border-white/20"></div>)}</div>}
-                                 </div>
-                                 <button onClick={handleRandomColorLeggings} className="flex-1 text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.randomColorLeggings', language)}</button>
-                             </div>
-                        </div>
-                     </div>
-                     <div className="p-2 border border-slate-700/50 rounded-md">
-                        <div className="flex justify-between items-center mb-2">
-                           <label className="text-sm font-medium text-slate-300">{t('controlPanel.labels.socks', language)}</label>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id={`socksMetallic-${activePerson.id}`} checked={activePerson.socksMetallic} onChange={e => handleMetallicToggle('socks', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500" />
-                                <label htmlFor={`socksMetallic-${activePerson.id}`} className="text-sm text-slate-300">{t('controlPanel.labels.metallic', language)}</label>
-                            </div>
-                        </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-                            <select value={socksModesRef.current[activePerson.id] || ''} onChange={e => {
-                                const newMode = e.target.value;
-                                socksModesRef.current[activePerson.id] = newMode;
-                                const newValue = getLegwearValue(newMode, socksColorsRef.current[activePerson.id], activePerson.sockLength, activePerson.socksMetallic);
-                                handlePersonStateChange(activePersonIndex, 'socks', newValue);
-                                }} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500">
-                                {SOCKS_OPTIONS.map(opt => <option key={opt.v} value={opt.v}>{t(opt.t, language)}</option>)}
-                            </select>
-                             <div className="flex gap-2">
-                                 <div className="relative flex-1" ref={socksColorPickerRef}>
-                                     <button onClick={() => setShowSocksColorPicker(p => !p)} className="w-full text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.selectColor', language)}</button>
-                                     {showSocksColorPicker && <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 bg-slate-900 p-2 rounded-md shadow-lg border border-fuchsia-500/20 grid grid-cols-8 gap-2 w-max">{LEGWEAR_PICKER_COLORS.map(c => <div key={c} onClick={() => handleSelectColorSocks(COLOR_NAME_TO_HEX_MAP[c])} style={{backgroundColor: COLOR_NAME_TO_HEX_MAP[c]}} className="w-6 h-6 rounded-full cursor-pointer border border-white/20"></div>)}</div>}
-                                 </div>
-                                 <button onClick={handleRandomColorSocks} className="flex-1 text-sm bg-fuchsia-950/40 text-fuchsia-300 border border-fuchsia-500/40 py-2 px-4 rounded-md transition-colors hover:bg-fuchsia-500/20">{t('controlPanel.buttons.randomColorSocks', language)}</button>
-                             </div>
-                         </div>
-                        {renderSelect("", activePerson.sockLength, e => handleSockLengthChange(e.target.value), SOCK_LENGTH_OPTIONS)}
-                     </div>
-
-                    <div>
-                        <button onClick={() => setShowShoeDetail(s => !s)} className="text-xs text-cyan-400 hover:underline mb-2">{showShoeDetail ? t('controlPanel.buttons.showSimple', language) : t('controlPanel.buttons.showDetail', language)}</button>
-                        {showShoeDetail ? 
-                            renderSelect('', activePerson.shoe, e => handlePersonStateChange(activePersonIndex, 'shoe', e.target.value), SHOES) : 
-                            renderSelect(t('controlPanel.labels.shoesQuick', language), activePerson.shoeQuick, e => { handlePersonStateChange(activePersonIndex, 'shoeQuick', e.target.value); handlePersonStateChange(activePersonIndex, 'shoe', ''); }, SHOE_QUICK_OPTIONS)}
-                    </div>
-                </div>
-             </Section>
-
-            <Section title={t('controlPanel.sections.environment', language)}>
-                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                    {renderSelect(t('controlPanel.labels.atmosphere', language), promptState.atmosphere, handleAtmosphereChange, ATMOSPHERE_OPTIONS, isGeneratingAtmosphere || promptState.removeBackground)}
-                    {renderSelect(t('controlPanel.labels.timeOfDay', language), promptState.timeOfDay, e => handleStateChange('timeOfDay', e.target.value), TIME_OF_DAY_OPTIONS, promptState.removeBackground)}
-                    {renderSelect(t('controlPanel.labels.weather', language), promptState.weather, e => handleStateChange('weather', e.target.value), WEATHER_OPTIONS, promptState.removeBackground)}
-                    {renderSelect(t('controlPanel.labels.vehicle', language), promptState.vehicle, e => handleStateChange('vehicle', e.target.value), VEHICLE_OPTIONS)}
-                    {renderSelect(t('controlPanel.labels.pet', language), promptState.pet, e => handleStateChange('pet', e.target.value), PET_OPTIONS)}
-                 </div>
-                 <div className="mt-3">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">{t('controlPanel.labels.background', language)}</label>
-                    <div className="flex gap-2">
-                         <select 
-                            value={BACKGROUND_OPTIONS.some(o => o.v === promptState.background) ? promptState.background : ''} 
-                            onChange={e => handleStateChange('background', e.target.value)} 
-                            disabled={promptState.removeBackground} 
-                            className="w-1/2 bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {BACKGROUND_OPTIONS.map(opt => <option key={opt.v} value={opt.v}>{t(opt.t, language)}</option>)}
-                        </select>
-                        <input 
-                            type="text" 
-                            value={promptState.background} 
-                            onChange={e => handleStateChange('background', e.target.value)} 
-                            placeholder={t('controlPanel.placeholders.background', language)} 
-                            disabled={promptState.removeBackground}
-                            className="w-1/2 bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" 
-                        />
-                    </div>
-                </div>
-                 <div className="flex items-center gap-2 mt-3">
-                    <input
-                        type="checkbox"
-                        id="removeBackground"
-                        checked={promptState.removeBackground}
-                        onChange={e => handleStateChange('removeBackground', e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500"
-                    />
-                    <label htmlFor="removeBackground" className="text-sm text-slate-300">
-                        {t('controlPanel.labels.removeBackground', language)}
-                    </label>
-                 </div>
-                 <div className="mt-3">
-                    <label className="block text-xs font-medium text-slate-400 mb-1">{t('controlPanel.labels.poseAction', language)}</label>
-                    <input type="text" value={promptState.pose} onChange={e => handleStateChange('pose', e.target.value)} placeholder={t('controlPanel.placeholders.pose', language)} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" />
-                 </div>
-            </Section>
-
-            <Section title={t('controlPanel.sections.styleTransfer', language)}>
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {Object.keys(STYLE_PROMPT_MAP).map(key => (
-                        <button key={key} onClick={() => onStyleButtonClick(key)} disabled={isGenerating} className="text-xs p-2 bg-slate-800/50 hover:bg-cyan-500/20 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            {t(`controlPanel.styleTransfer.${key}`, language)}
-                        </button>
-                    ))}
-                </div>
-                 <button 
-                    onClick={onSora2StyleTransfer} 
-                    disabled={isGenerating} 
-                    className="mt-3 w-full text-sm font-bold p-2 bg-gradient-to-r from-blue-500 to-teal-400 text-white hover:opacity-90 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {t('controlPanel.styleTransfer.sora2', language)}
-                </button>
-                <div className="flex gap-2 mt-3">
-                    <input
-                        type="text"
-                        value={animeStyleInput}
-                        onChange={e => setAnimeStyleInput(e.target.value)}
-                        placeholder={t('controlPanel.placeholders.animeStyle', language)}
-                        className="flex-grow w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500"
-                    />
-                    <button
-                        onClick={() => onCustomStyleTransfer(animeStyleInput)}
-                        disabled={isGenerating || !animeStyleInput.trim()}
-                        className="text-sm bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed"
-                    >
-                        {t('controlPanel.buttons.applyStyle', language)}
-                    </button>
-                </div>
-            </Section>
-
-            <Section title={t('controlPanel.sections.color', language)}>
-                <div className="max-h-48 overflow-y-auto pr-2">
-                    <div className="grid grid-cols-8 gap-2">
-                        {LEGWEAR_PICKER_COLORS.map(color => (
-                            <button
-                                key={color}
-                                onClick={() => onColorizeImage(color)}
-                                disabled={isColorizing || isGenerating}
-                                className="h-6 rounded-md border-2 border-transparent transition-all hover:border-cyan-400 disabled:opacity-50"
-                                style={{ backgroundColor: COLOR_NAME_TO_HEX_MAP[color] }}
-                                title={color}
-                            />
-                        ))}
-                    </div>
-                </div>
-            </Section>
-
-            <Section title={t('controlPanel.sections.fixedPrompts', language)}>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {FIXED_PROMPTS.map(p => {
-                        if (p.key === 'hourglass_waist') {
-                            return (
-                                <button
-                                    key={p.key}
-                                    onClick={handleHourglassToggle}
-                                    className={`text-xs p-2 rounded-md transition-colors ${activePerson.hasHourglassWaist ? 'bg-fuchsia-500/30 text-white' : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'}`}
-                                >
-                                    {t(p.label, language)}
-                                </button>
-                            );
-                        }
-                        if (p.key === 'ripped') {
-                            return (
-                                <button
-                                    key={p.key}
-                                    onClick={handleRippedToggle}
-                                    className={`text-xs p-2 rounded-md transition-colors ${activePerson.hasRippedBody ? 'bg-fuchsia-500/30 text-white' : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'}`}
-                                >
-                                    {t(p.label, language)}
-                                </button>
-                            );
-                        }
-                        return (
-                            <button
-                                key={p.key}
-                                onClick={() => handleFixedPromptToggle(p.key)}
-                                className={`text-xs p-2 rounded-md transition-colors ${promptState.fixedPrompts.includes(p.key) ? 'bg-fuchsia-500/30 text-white' : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700'}`}
-                            >
-                                {t(p.label, language)}
-                            </button>
-                        );
-                    })}
-                </div>
-            </Section>
-            
-            <Section title={t('controlPanel.sections.gemini', language)}>
-                <div className="flex border-b border-slate-700 mb-3 overflow-x-auto">
-                    {(['analyze', 'edit', 'background', 'pose', 'scene', 'video', 'realify', 'live'] as const).map(feature => (
-                        <button
-                            key={feature}
-                            onClick={() => setActiveVisionFeature(feature)}
-                            className={`px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap ${activeVisionFeature === feature ? 'border-b-2 border-fuchsia-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-                        >
-                            {t(`controlPanel.buttons.${feature}`, language)}
-                        </button>
-                    ))}
-                </div>
-
-                {activeVisionFeature === 'analyze' && (
-                    <div className="space-y-3">
-                        {renderDropZone( 'file-input-1-analyze', isDragging1, (e) => handleDragOver(e, setIsDragging1), (e) => handleDragLeave(e, setIsDragging1), (e) => handleDrop(e, 1), fileInputRef1, (e) => handleFileSelect(e, 1), uploadedImageData1, t('controlPanel.placeholders.dropOrClickAnalyze', language), () => { setUploadedImageData1(null); setAnalyzedData(null); }
-                        )}
-                        <button onClick={() => uploadedImageData1 && onAnalyzeImage(uploadedImageData1.base64, uploadedImageData1.mimeType)} disabled={isGenerating || !uploadedImageData1} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed" >
-                            {isGenerating ? t('controlPanel.buttons.analyzingScene', language) : t('controlPanel.buttons.analyze', language)}
-                        </button>
-                        {analysisError && <p className="text-red-400 text-xs">{analysisError}</p>}
-                        {analyzedData && ( <textarea value={analyzedData.outfit} readOnly rows={4} className="w-full bg-slate-900/50 border border-slate-700 rounded-md px-3 py-2 text-sm font-mono" /> )}
-                    </div>
-                )}
-
-                {activeVisionFeature === 'edit' && (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            {renderDropZone( 'file-input-1-edit', isDragging1, (e) => handleDragOver(e, setIsDragging1), (e) => handleDragLeave(e, setIsDragging1), (e) => handleDrop(e, 1), fileInputRef1, (e) => handleFileSelect(e, 1), uploadedImageData1, t('controlPanel.placeholders.dropOrClickOriginal', language), () => setUploadedImageData1(null))}
-                             {renderDropZone( 'file-input-2-edit', isDragging2, (e) => handleDragOver(e, setIsDragging2), (e) => handleDragLeave(e, setIsDragging2), (e) => handleDrop(e, 2), fileInputRef2, (e) => handleFileSelect(e, 2), uploadedImageData2, t('controlPanel.placeholders.sourceImage', language), () => setUploadedImageData2(null))}
-                        </div>
-                        <textarea value={editPrompt} onChange={e => { setEditPrompt(e.target.value); setIsEditPromptDirty(true); }} placeholder={t('controlPanel.placeholders.editPrompt', language)} rows={4} className="w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500 font-mono" />
-                        <button onClick={handleExecuteEdit} disabled={isGenerating || !uploadedImageData1 || isAnalyzingSourceOutfit} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed" >
-                            {isAnalyzingSourceOutfit ? t('controlPanel.buttons.analyzingSourceOutfit', language) : t('controlPanel.buttons.executeEdit', language)}
-                        </button>
-                        {analysisError && <p className="text-red-400 text-xs">{analysisError}</p>}
-                    </div>
-                )}
-
-                {activeVisionFeature === 'background' && (
-                    <div className="space-y-3">
-                        <div 
-                            onDragOver={(e) => handleDragOver(e, setIsDraggingBg)}
-                            onDragLeave={(e) => handleDragLeave(e, setIsDraggingBg)}
-                            onDrop={handleBgFileDrop}
-                            onClick={() => !pendingBgImage && bgFileInputRef.current?.click()}
-                            className={`w-full p-4 border-2 border-dashed rounded-lg text-center transition-colors flex items-center justify-center min-h-[152px] ${isDraggingBg ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-slate-600 hover:border-slate-500'} ${!pendingBgImage ? 'cursor-pointer' : ''}`}
-                        >
-                            <input type="file" ref={bgFileInputRef} onChange={handleBgFileSelect} className="hidden" accept="image/*" />
-                            {isProcessingBg ? (
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-400"></div>
-                            ) : pendingBgImage ? (
-                                <div className="relative inline-block">
-                                    <img src={pendingBgImage.previewUrl} alt="BG Preview" className="max-h-32 mx-auto rounded-md" />
-                                </div>
-                            ) : (
-                                <span className="text-xs text-slate-400">{t('controlPanel.placeholders.dropOrClickBg', language)}</span>
-                            )}
-                        </div>
-                        {pendingBgImage && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <button onClick={handleConfirmBackground} disabled={isProcessingBg} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm disabled:bg-slate-500">Analyze for Prompt</button>
-                                <button onClick={handleUseBackgroundDirectly} disabled={isProcessingBg} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2 px-4 rounded-md transition-colors text-sm disabled:bg-slate-500">Use Directly (Experimental)</button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeVisionFeature === 'pose' && (
-                    <div className="space-y-3">
-                        <div 
-                            onDragOver={(e) => handleDragOver(e, setIsDraggingPose)}
-                            onDragLeave={(e) => handleDragLeave(e, setIsDraggingPose)}
-                            onDrop={handlePoseFileDrop}
-                            onClick={() => !poseImageFile && poseFileInputRef.current?.click()}
-                            className={`w-full p-4 border-2 border-dashed rounded-lg text-center transition-colors flex items-center justify-center min-h-[152px] ${isDraggingPose ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-slate-600 hover:border-slate-500'} ${!poseImageFile ? 'cursor-pointer' : ''}`}
-                        >
-                            <input type="file" ref={poseFileInputRef} onChange={handlePoseFileSelect} className="hidden" accept="image/*" />
-                            {isAnalyzingPose ? (
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-400"></div>
-                            ) : poseImagePreview ? (
-                                <div className="relative inline-block">
-                                    <img src={poseImagePreview} alt="Pose Preview" className="max-h-32 mx-auto rounded-md" />
-                                    <button 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            setPoseImageFile(null);
-                                            setPoseImagePreview('');
-                                            setPromptState(p => ({...p, pose: '__random__'}));
-                                            addLog('Pose reference image cleared.');
-                                        }} 
-                                        className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs leading-none z-10"
-                                        aria-label="Remove image"
-                                        title="Remove image"
-                                    >
-                                        &times;
-                                    </button>
-                                </div>
-                            ) : (
-                                <span className="text-xs text-slate-400">{t('controlPanel.placeholders.dropOrClickPose', language)}</span>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {activeVisionFeature === 'scene' && (
-                    <div className="space-y-4">
-                        <div className="flex gap-2">
-                            <input type="text" value={cinematicTitle} onChange={e => setCinematicTitle(e.target.value)} placeholder={t('controlPanel.placeholders.movieTitle', language)} className="flex-grow w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" />
-                            <button onClick={() => onAnalyzeScene(cinematicTitle)} disabled={isAnalyzingScene || !cinematicTitle} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed">
-                                {isAnalyzingScene ? t('controlPanel.buttons.analyzingScene', language) : t('controlPanel.buttons.analyze', language)}
-                            </button>
-                        </div>
-                         <div className="flex gap-2">
-                             <input type="text" value={mangaTitle} onChange={e => setMangaTitle(e.target.value)} placeholder={t('controlPanel.placeholders.mangaTitle', language)} className="flex-grow w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" />
-                             <input type="text" value={mangaCharacter} onChange={e => setMangaCharacter(e.target.value)} placeholder={t('controlPanel.placeholders.mangaCharacter', language)} className="flex-grow w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" />
-                            <button onClick={() => onAnalyzeCharacterOutfit(mangaTitle, mangaCharacter)} disabled={isAnalyzingOutfit || !mangaTitle || !mangaCharacter} className="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed">
-                                {isAnalyzingOutfit ? t('controlPanel.buttons.analyzingScene', language) : t('controlPanel.buttons.analyze', language)}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {activeVisionFeature === 'video' && (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <textarea value={videoGenPrompt} onChange={e => setVideoGenPrompt(e.target.value)} placeholder="A detailed video prompt... (e.g., A cat wearing sunglasses driving a car on Mars)" rows={5} className="col-span-2 w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500 font-mono" />
-                            <div 
-                                onDragOver={(e) => handleDragOver(e, setIsDraggingVideo)}
-                                onDragLeave={(e) => handleDragLeave(e, setIsDraggingVideo)}
-                                onDrop={handleVideoDrop}
-                                onClick={() => !videoSourceImage && fileInputRefVideo.current?.click()}
-                                className={`w-full p-4 border-2 border-dashed rounded-lg text-center transition-colors flex items-center justify-center min-h-[152px] ${isDraggingVideo ? 'border-fuchsia-500 bg-fuchsia-500/10' : 'border-slate-600 hover:border-slate-500'} ${!videoSourceImage ? 'cursor-pointer' : ''}`}
-                            >
-                                <input type="file" ref={fileInputRefVideo} onChange={handleVideoFileSelect} className="hidden" accept="image/*" />
-                                {videoSourceImage ? (
-                                    <div className="relative inline-block">
-                                        <img src={videoSourceImage.previewUrl} alt="Video source" className="max-h-32 mx-auto rounded-md" />
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setVideoSourceImage(null); }} 
-                                            className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center font-bold text-xs leading-none z-10"
-                                            aria-label="Remove image"
-                                            title="Remove image"
-                                        >
-                                            &times;
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <span className="text-xs text-slate-400">Drop starting image (optional)</span>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <input type="text" value={videoIdeaInput} onChange={e => setVideoIdeaInput(e.target.value)} placeholder={t('controlPanel.placeholders.videoIdea', language)} className="flex-grow w-full bg-slate-800/50 border border-slate-700 rounded-md px-3 py-2 text-sm focus:ring-fuchsia-500 focus:border-fuchsia-500" />
-                                <button onClick={handleCreateVideoPrompt} disabled={isCreatingVideoPrompt || !videoIdeaInput} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed">
-                                    {isCreatingVideoPrompt ? "Creating..." : "Create Prompt from Idea"}
-                                </button>
-                                <button onClick={() => onGenerateVideoFromPrompt(videoGenPrompt, videoSourceImage || undefined)} disabled={isGeneratingVideo || !videoGenPrompt} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed">
-                                    {isGeneratingVideo ? "Generating Video..." : "Generate Video"}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                
-                 {activeVisionFeature === 'realify' && (
-                    <div className="space-y-3">
-                         {renderDropZone( 'file-input-realify', isDraggingRealify, (e) => handleDragOver(e, setIsDraggingRealify), (e) => handleDragLeave(e, setIsDraggingRealify), async (e) => {
-                             e.preventDefault(); e.stopPropagation(); setIsDraggingRealify(false);
-                             const file = e.dataTransfer.files?.[0];
-                             if (file) { const d = await processAndValidateFile(file); if (d) setUploadedImageDataRealify(d); }
-                         }, fileInputRefRealify, async (e) => {
-                            const file = e.target.files?.[0];
-                             if (file) { const d = await processAndValidateFile(file); if (d) setUploadedImageDataRealify(d); }
-                             if (e.target) e.target.value = '';
-                         }, uploadedImageDataRealify, t('controlPanel.placeholders.dropOrClickRealify', language), () => setUploadedImageDataRealify(null)
-                        )}
-                        <button onClick={() => uploadedImageDataRealify && onRealifyImage(uploadedImageDataRealify)} disabled={isGenerating || !uploadedImageDataRealify} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-md transition-colors disabled:bg-slate-500 disabled:cursor-not-allowed" >
-                            {isGenerating ? "Processing..." : "Make Photorealistic"}
-                        </button>
-                    </div>
-                 )}
-                
-                {activeVisionFeature === 'live' && (
-                    <LiveConversation language={language} addLog={addLog} />
-                )}
-
             </Section>
         </>
       )}
@@ -1823,5 +1381,4 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   );
 };
 
-// Fix: Add default export for ControlPanel component
 export default ControlPanel;

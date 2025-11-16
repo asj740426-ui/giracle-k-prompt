@@ -493,7 +493,11 @@ const App: React.FC = () => {
     
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.generationError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.generationError', language, error.message));
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -541,7 +545,11 @@ const App: React.FC = () => {
 
         } catch (e) {
             const error = e as Error;
-            addLog(`Image analysis failed: ${error.message}`);
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(`Image analysis failed: ${error.message}`);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -592,7 +600,11 @@ const App: React.FC = () => {
             setGeneratedImages([newImage]);
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.editError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.editError', language, error.message));
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -622,7 +634,11 @@ const App: React.FC = () => {
             setGeneratedImages([newImage]);
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.editError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.editError', language, error.message));
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -658,7 +674,11 @@ const App: React.FC = () => {
             });
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.editError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.editError', language, error.message));
+            }
         } finally {
             setIsStyling(false);
         }
@@ -675,7 +695,11 @@ const App: React.FC = () => {
             addLog('Scene analysis complete and applied.');
         } catch (e) {
             const error = e as Error;
-            addLog(`Scene analysis failed: ${error.message}`);
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(`Scene analysis failed: ${error.message}`);
+            }
         } finally {
             setIsAnalyzingScene(false);
         }
@@ -697,7 +721,11 @@ const App: React.FC = () => {
             addLog(`Outfit for ${character} applied.`);
         } catch (e) {
             const error = e as Error;
-            addLog(`Outfit analysis failed: ${error.message}`);
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(`Outfit analysis failed: ${error.message}`);
+            }
         } finally {
             setIsAnalyzingOutfit(false);
         }
@@ -736,11 +764,15 @@ const App: React.FC = () => {
 
         } catch (e) {
             const error = e as Error;
-            addLog(`Video generation failed: ${error.message}`);
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(`Video generation failed: ${error.message}`);
+            }
         } finally {
             setIsGeneratingVideo(false);
         }
-    }, [addLog, promptState.aspect, isApiReady]);
+    }, [addLog, promptState.aspect, isApiReady, language]);
     
     const applyStyleTransfer = async (originalImage: ImagePart, stylePrompt: string, styleKey: string) => {
         if (!isApiReady) { addLog("API Keys not configured."); return; }
@@ -775,7 +807,11 @@ const App: React.FC = () => {
 
         } catch (e) {
             const error = e as Error;
-            addLog(`Style transfer failed: ${error.message}`);
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(`Style transfer failed: ${error.message}`);
+            }
         } finally {
             setIsStyling(false);
         }
@@ -860,7 +896,11 @@ const App: React.FC = () => {
 
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.realifyError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.realifyError', language, error.message));
+            }
         } finally {
             setIsStyling(false);
         }
@@ -888,7 +928,11 @@ const App: React.FC = () => {
             addLog(t('app.logs.analyzingRealifiedPromptComplete', language));
         } catch (e) {
             const error = e as Error;
-            addLog(t('app.logs.analyzingRealifiedPromptError', language, error.message));
+            if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                addLog(t('app.errors.quotaExceeded', language));
+            } else {
+                addLog(t('app.logs.analyzingRealifiedPromptError', language, error.message));
+            }
         } finally {
             setIsAnalyzingRealifiedPrompt(false);
         }
@@ -1126,7 +1170,11 @@ const App: React.FC = () => {
                         setGeneratedImages([newImage]);
                     } catch(e) {
                         const error = e as Error;
-                        addLog(`Color edit failed: ${error.message}`);
+                        if (error.message.includes('429') || error.message.includes('Quota exceeded')) {
+                            addLog(t('app.errors.quotaExceeded', language));
+                        } else {
+                            addLog(`Color edit failed: ${error.message}`);
+                        }
                     } finally {
                         setIsColorizing(false);
                     }
